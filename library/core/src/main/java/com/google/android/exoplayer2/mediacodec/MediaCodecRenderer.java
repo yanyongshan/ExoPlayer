@@ -363,6 +363,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
   @Nullable private DrmSession sourceDrmSession;
   @Nullable private MediaCrypto mediaCrypto;
   private boolean mediaCryptoRequiresSecureDecoder;
+  //渲染超时时间
   private long renderTimeLimitMs;
   private float operatingRate;
   @Nullable private MediaCodec codec;
@@ -846,8 +847,10 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
         return;
       }
       // We have a format.
+      //初始化MediaCodec
       maybeInitCodecOrBypass();
       if (bypassEnabled) {
+        //旁路模式
         TraceUtil.beginSection("bypassRender");
         while (bypassRender(positionUs, elapsedRealtimeUs)) {}
         TraceUtil.endSection();
@@ -1188,6 +1191,11 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
     onCodecInitialized(codecName, codecInitializedTimestamp, elapsed);
   }
 
+  /***
+   * 是否继续等待渲染
+   * @param renderStartTimeMs 渲染开始时间
+   * @return 是否继续等待
+   */
   private boolean shouldContinueRendering(long renderStartTimeMs) {
     return renderTimeLimitMs == C.TIME_UNSET
         || SystemClock.elapsedRealtime() - renderStartTimeMs < renderTimeLimitMs;
@@ -1253,6 +1261,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
    * @throws ExoPlaybackException If an error occurs feeding the input buffer.
    */
   private boolean feedInputBuffer() throws ExoPlaybackException {
+    Log.i(TAG,"feedInputBuffer start");
     if (codec == null || codecDrainState == DRAIN_STATE_WAIT_END_OF_STREAM || inputStreamEnded) {
       return false;
     }
@@ -1752,6 +1761,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
   }
 
   /**
+   * 清空OutputBuffer
    * @return Whether it may be possible to drain more output data.
    * @throws ExoPlaybackException If an error occurs draining the output buffer.
    */
@@ -1773,7 +1783,7 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
       } else {
         outputIndex = codecAdapter.dequeueOutputBufferIndex(outputBufferInfo);
       }
-
+      Log.i(TAG,"drainOutputBuffer start outputIndex="+outputIndex);
       if (outputIndex < 0) {
         if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED /* (-2) */) {
           processOutputMediaFormatChanged();
